@@ -7,41 +7,31 @@ import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-# ----------------------------
-# Configuration
-# ----------------------------
 SESSION_TIME_MAP = {
     'morning': '09:00',
     'afternoon': '14:00'
 }
-
 EXAM_DURATION_HOURS = 3
-
 THIN_BORDER = Border(
     left=Side(style="thin"),
     right=Side(style="thin"),
     top=Side(style="thin"),
     bottom=Side(style="thin")
 )
-
 HEADER_FILL = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
 TITLE_FONT = Font(bold=True, size=14, color="FFFFFF")
 HEADER_FONT = Font(bold=True, color="FFFFFF")
 BODY_FONT = Font(size=10)
 
-# ----------------------------
-# Helper Functions
-# ----------------------------
+
 def extract_course_from_usn(usn):
-    """Extract course code from USN like 1CR24CS110 -> CS"""
     match = re.search(r'\d{2}([A-Z]{2,3})\d{3}$', str(usn))
     return match.group(1) if match else 'UNKNOWN'
 
+
 def extract_metadata(filepath):
-    """Forgiving metadata extraction - scans first 5 rows/cols for date and time"""
     ext = os.path.splitext(filepath)[1].lower()
-    text_blob = ""
-    
+    text_blob = "" 
     if ext == ".xlsx":
         wb = load_workbook(filepath)
         ws = wb.active
@@ -53,26 +43,21 @@ def extract_metadata(filepath):
     else:
         df = pd.read_excel(filepath, nrows=5, header=None, engine="xlrd")
         text_blob = " ".join(df.fillna("").astype(str).values.flatten())
-    
-    # Extract date and time with regex
-    date_match = re.search(r'\d{4}-\d{2}-\d{2}', text_blob)
-    time_match = re.search(r'\d{2}:\d{2}(:\d{2})?', text_blob)
-    
-    date_str = date_match.group() if date_match else None
-    time_str = time_match.group() if time_match else None
-    
+
+    date_match =re.search(r'\d{4}-\d{2}-\d{2}', text_blob)
+    time_match =re.search(r'\d{2}:\d{2}(:\d{2})?', text_blob)
+    date_str =date_match.group() if date_match else None
+    time_str=time_match.group() if time_match else None
     return date_str, time_str
 
+
 def normalize_datetime(date_str, time_str):
-    """Convert date and time strings to datetime objects"""
     if not date_str or not time_str:
         return None, None, None
-    
     try:
-        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+        date_obj= datetime.strptime(date_str, '%Y-%m-%d')
     except:
         return None, None, None
-    
     start_time = None
     for fmt in ('%H:%M:%S', '%H:%M'):
         try:
@@ -80,21 +65,16 @@ def normalize_datetime(date_str, time_str):
             break
         except:
             pass
-    
     if not start_time:
         return None, None, None
-    
-    start_dt = datetime.combine(date_obj.date(), start_time.time())
-    end_dt = start_dt + timedelta(hours=EXAM_DURATION_HOURS)
-    
+    start_dt= datetime.combine(date_obj.date(), start_time.time())
+    end_dt =start_dt + timedelta(hours=EXAM_DURATION_HOURS) 
     return date_obj, start_dt, end_dt
 
+
 def read_students_from_file(filepath):
-    """Read student data from session file"""
     ext = os.path.splitext(filepath)[1].lower()
     df = pd.read_excel(filepath, skiprows=3, engine="xlrd" if ext == ".xls" else None)
-    
-    # Clean column names
     df.columns = df.columns.str.strip()
     df = df.rename(columns={
         'S No': 'SNo',
@@ -104,19 +84,15 @@ def read_students_from_file(filepath):
         'Subject Name': 'SubjectName',
         'Semester': 'Semester'
     })
-    
-    # Remove empty rows
     df = df.dropna(subset=['USN'])
-    
     return df
 
+
 def check_conflicts(students_df):
-    """Check for students enrolled in multiple subjects in the same session"""
-    conflicts = []
-    
+    conflicts = [] 
     for usn, group in students_df.groupby('USN'):
         if len(group) > 1:
-            student_data = group.iloc[0]
+            student_data=group.iloc[0]
             conflicts.append({
                 'USN': usn,
                 'Name': student_data['Name'],
@@ -124,55 +100,44 @@ def check_conflicts(students_df):
                 'Subjects': ', '.join(f"{row['SubjectCode']} ({row.get('SubjectName', row['SubjectCode'])})" for _, row in group.iterrows()),
                 'SubjectCount': len(group)
             })
-    
     return conflicts
 
+
 def group_students_by_course_subject(session_students):
-    """Group students by course and subject for intelligent pairing"""
     session_students['ExtractedCourse'] = session_students['USN'].apply(extract_course_from_usn)
-    
     course_subject_groups = defaultdict(list)
     for _, student in session_students.iterrows():
         key = (student['ExtractedCourse'], student['SubjectCode'])
-        course_subject_groups[key].append(student)
-    
+        course_subject_groups[key].append(student)  
     return dict(course_subject_groups)
 
+
 def create_room_pairs(course_subject_groups):
-    """Create optimal pairs of course-subject groups for rooms"""
     groups = list(course_subject_groups.keys())
     room_pairs = []
     used_groups = set()
-    
     for i, group1 in enumerate(groups):
         if group1 in used_groups:
-            continue
-        
+            continue  
         course1, subject1 = group1
         best_pair = None
-        
-        # Look for different course and different subject
         for j, group2 in enumerate(groups[i+1:], i+1):
             if group2 in used_groups:
                 continue
-            
             course2, subject2 = group2
             if course1 != course2 and subject1 != subject2:
                 best_pair = group2
                 break
         
-        # If no different course+subject, try different course same subject
         if not best_pair:
             for j, group2 in enumerate(groups[i+1:], i+1):
                 if group2 in used_groups:
-                    continue
-                
+                    continue     
                 course2, subject2 = group2
                 if course1 != course2:
                     best_pair = group2
                     break
-        
-        # If still no pair, use any remaining group
+
         if not best_pair:
             for j, group2 in enumerate(groups[i+1:], i+1):
                 if group2 in used_groups:
@@ -187,26 +152,22 @@ def create_room_pairs(course_subject_groups):
         else:
             room_pairs.append((group1, None))
             used_groups.add(group1)
-    
     return room_pairs
 
+
 def allocate_students_to_room(group1_students, group2_students, rows, cols):
-    """Allocate students to room in alternating column pattern"""
     room_layout = [['' for _ in range(cols)] for _ in range(rows)]
     course_header = [''] * cols
     room_students = []
-    
     group1_idx = 0
     group2_idx = 0
     
-    # Determine course codes and subjects for header
-    group1_course = group1_students[0]['ExtractedCourse'] if group1_students else ''
-    group1_subject = group1_students[0]['SubjectCode'] if group1_students else ''
-    group2_course = group2_students[0]['ExtractedCourse'] if group2_students else ''
-    group2_subject = group2_students[0]['SubjectCode'] if group2_students else ''
+    group1_course =group1_students[0]['ExtractedCourse'] if group1_students else ''
+    group1_subject =group1_students[0]['SubjectCode'] if group1_students else ''
+    group2_course =group2_students[0]['ExtractedCourse'] if group2_students else ''
+    group2_subject =group2_students[0]['SubjectCode'] if group2_students else ''
     
     for col in range(cols):
-        # Determine which group for this column
         if col % 2 == 0:  # Even columns for group 1
             current_group = group1_students
             current_idx = group1_idx
@@ -225,43 +186,33 @@ def allocate_students_to_room(group1_students, group2_students, rows, cols):
             else:
                 break
         
-        # Update the appropriate index
         if col % 2 == 0 or not group2_students:
             group1_idx = current_idx
         else:
             group2_idx = current_idx
-    
     return room_layout, room_students, course_header
 
 def create_room_allotment_sheet(wb, allocations, date_obj, start_dt, end_dt):
-    """Create the Room Allotment Chart as first sheet (VTU style)"""
-
     allocations = sorted(
         allocations,
         key=lambda x: (x["Branch"], x["SubCode"])
     )
-
     ws = wb.create_sheet("Room Allocation", 0)
-    
     date_str = date_obj.strftime("%d-%b-%Y")
     session_str = f"{start_dt.strftime('%I:%M%p')} TO {end_dt.strftime('%I:%M%p')}"
     
-    # Title
-    ws.append(["VTU Theory Exam June'24 to July'24 - CANDIDATE EXAM HALL ALLOTMENT"])
+    ws.append(["VTU Theory Exam - CANDIDATE EXAM HALL ALLOTMENT"])
     ws.merge_cells("A1:G1")
     ws["A1"].font = TITLE_FONT
     ws["A1"].fill = HEADER_FILL
     ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
     ws["A1"].border = THIN_BORDER
     ws.row_dimensions[1].height = 30
-    
-    # Date / Session
+
     ws.append([f"DATE : {date_str}    SESSION : {session_str}"])
     ws.merge_cells("A2:G2")
     ws["A2"].font = Font(name='Calibri', bold=True, size=11)
     ws["A2"].alignment = Alignment(horizontal="center")
-    
-    # Table headers
     headers = ["Room No", "BRANCH", "Sub code", "Sub Name", "Sem", "ALLOTTED USN'S", "TOTAL"]
     ws.append(headers)
     
@@ -272,7 +223,6 @@ def create_room_allotment_sheet(wb, allocations, date_obj, start_dt, end_dt):
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
     ws.row_dimensions[3].height = 25
     
-    # Data rows
     for alloc in allocations:
         ws.append([
             alloc["Room"],
@@ -294,12 +244,9 @@ def create_room_allotment_sheet(wb, allocations, date_obj, start_dt, end_dt):
                 vertical="top",
                 wrap_text=True
             )
-            
-            # Alternating row colors
             if (r - 4) % 2 == 0:
                 cell.fill = PatternFill(start_color='F8F9FA', end_color='F8F9FA', fill_type='solid')
     
-    # Column widths
     ws.column_dimensions["A"].width = 12
     ws.column_dimensions["B"].width = 15
     ws.column_dimensions["C"].width = 12
@@ -309,47 +256,32 @@ def create_room_allotment_sheet(wb, allocations, date_obj, start_dt, end_dt):
     ws.column_dimensions["G"].width = 10
 
 def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, output_folder):
-    """Create complete output Excel file with all sheets"""
-    
-    # Group students and create room pairs
     course_subject_groups = group_students_by_course_subject(session_students)
     room_pairs = create_room_pairs(course_subject_groups)
-    
-    # Create workbook
     wb = Workbook()
     if wb.active:
-        wb.remove(wb.active)  # Remove default sheet
-    
-    # Track allocations for the summary sheet
+        wb.remove(wb.active)
     all_allocated_students = []
     room_allocations = []
     room_pair_idx = 0
-    
-    # Allocate to rooms
+
     for room_idx, room_row in rooms_df.iterrows():
         room_name = room_row["RoomName"]
         rows = int(room_row["Rows"])
         cols = int(room_row["Cols"])
-        
-        # Get room pair if available
         if room_pair_idx < len(room_pairs):
             pair = room_pairs[room_pair_idx]
             group1_key, group2_key = pair
-            
-            group1_students = course_subject_groups[group1_key]
-            group2_students = course_subject_groups[group2_key] if group2_key else []
-            
-            # Allocate students to this room
+            group1_students= course_subject_groups[group1_key]
+            group2_students= course_subject_groups[group2_key] if group2_key else []
+
             room_layout, room_students, course_header = allocate_students_to_room(
                 group1_students, group2_students, rows, cols
             )
-            
-            # Track for room allotment sheet
+
             for student in room_students:
                 branch = student['ExtractedCourse']
                 subcode = student['SubjectCode']
-                
-                # Find or create allocation entry
                 found = False
                 for alloc in room_allocations:
                     if (alloc['Room'] == room_name and 
@@ -359,7 +291,7 @@ def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, o
                         alloc['Total'] += 1
                         found = True
                         break
-                
+            
                 if not found:
                     room_allocations.append({
                         'Room': room_name,
@@ -370,20 +302,18 @@ def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, o
                         'USNs': [student['USN']],
                         'Total': 1
                     })
-            
-            # Remove allocated students from groups
+
             course_subject_groups[group1_key] = course_subject_groups[group1_key][len([s for s in room_students if s['ExtractedCourse'] == group1_key[0]]):]
             if group2_key:
                 course_subject_groups[group2_key] = course_subject_groups[group2_key][len([s for s in room_students if s['ExtractedCourse'] == group2_key[0]]):]
-            
-            # Check if groups are exhausted
+
             if len(course_subject_groups[group1_key]) == 0:
                 if group2_key and len(course_subject_groups[group2_key]) == 0:
                     room_pair_idx += 1
                 elif not group2_key:
                     room_pair_idx += 1
-            
             all_allocated_students.extend(room_students)
+
         else:
             room_layout = [['' for _ in range(cols)] for _ in range(rows)]
             course_header = [''] * cols
@@ -391,30 +321,22 @@ def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, o
 
         if not room_students:
             continue
-        # Create room layout sheet
         ws = wb.create_sheet(title=room_name[:31])
-        
-        # Set professional font
         for row in ws.iter_rows():
             for cell in row:
                 cell.font = Font(name='Calibri')
-        
-        # Room header
         ws.append([f"Room: {room_name}"])
         ws['A1'].font = Font(name='Calibri', bold=True, size=16)
         ws['A1'].alignment = Alignment(horizontal='center')
         ws.merge_cells(f'A1:{get_column_letter(cols)}1')
         
-        # Course header row
         ws.append(course_header)
         header_row = 2
-        
         for col_idx in range(cols):
             cell = ws.cell(row=header_row, column=col_idx + 1)
             cell.font = Font(name='Calibri', bold=True, size=11)
             cell.alignment = Alignment(horizontal='center', vertical='center')
-            
-            # Course-specific colors
+
             if 'CS' in str(cell.value):
                 cell.fill = PatternFill(start_color='E6F3FF', end_color='E6F3FF', fill_type='solid')
             elif 'AI' in str(cell.value):
@@ -426,25 +348,20 @@ def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, o
             else:
                 cell.fill = PatternFill(start_color='F5F5F5', end_color='F5F5F5', fill_type='solid')
             
-            # Borders
             if col_idx == 0:
                 cell.border = Border(left=Side(style='thick'), top=Side(style='thick'), bottom=Side(style='thin'))
             elif col_idx == cols - 1:
                 cell.border = Border(right=Side(style='thick'), top=Side(style='thick'), bottom=Side(style='thin'))
             else:
                 cell.border = Border(top=Side(style='thick'), bottom=Side(style='thin'))
-        
-        # Seating layout
+
         layout_start_row = 3
         for row_idx, row_data in enumerate(room_layout):
             ws.append(row_data)
-            
             for col_idx in range(cols):
                 cell = ws.cell(row=layout_start_row + row_idx, column=col_idx + 1)
                 cell.font = Font(name='Calibri', size=10)
                 cell.alignment = Alignment(horizontal='center', vertical='center')
-                
-                # Column-wise zebra striping
                 if col_idx % 2 == 0:
                     if 'CS' in course_header[col_idx]:
                         cell.fill = PatternFill(start_color='F8FCFF', end_color='F8FCFF', fill_type='solid')
@@ -456,8 +373,7 @@ def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, o
                         cell.fill = PatternFill(start_color='FCF8FF', end_color='FCF8FF', fill_type='solid')
                     else:
                         cell.fill = PatternFill(start_color='FAFAFA', end_color='FAFAFA', fill_type='solid')
-                
-                # Outer borders only
+
                 border = Border()
                 if col_idx == 0:
                     border = Border(left=Side(style='thick'))
@@ -470,39 +386,30 @@ def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, o
                         border = Border(right=Side(style='thick'), bottom=Side(style='thick'))
                     else:
                         border = Border(bottom=Side(style='thick'))
-                
                 cell.border = border
-        
-        # Column widths
+
         for col_idx in range(1, cols + 1):
             ws.column_dimensions[get_column_letter(col_idx)].width = 16
-        
-        # Spacing
         ws.append([])
         ws.append([])
-        
-        # Student list
+
         if room_students:
             ws.append(["Students in this room:"])
             students_header_row = len(room_layout) + 5
             ws.cell(row=students_header_row, column=1).font = Font(name='Calibri', bold=True, size=12)
-            
             ws.append(["USN", "Name", "Course", "SubjectCode"])
             table_header_row = students_header_row + 1
-            
             for col_idx in range(1, 5):
                 cell = ws.cell(row=table_header_row, column=col_idx)
                 cell.font = Font(name='Calibri', bold=True, size=10)
                 cell.fill = PatternFill(start_color='D9EAF7', end_color='D9EAF7', fill_type='solid')
                 cell.alignment = Alignment(horizontal='center')
                 cell.border = THIN_BORDER
-            
+
             for idx, student in enumerate(room_students):
-                ws.append([student["USN"], student["Name"], student["ExtractedCourse"], student["SubjectCode"]])
-                
+                ws.append([student["USN"], student["Name"], student["ExtractedCourse"], student["SubjectCode"]])  
                 row_num = table_header_row + 1 + idx
                 fill_color = 'F8F9FA' if idx % 2 == 0 else 'FFFFFF'
-                
                 for col_idx in range(1, 5):
                     cell = ws.cell(row=row_num, column=col_idx)
                     cell.font = Font(name='Calibri', size=9)
@@ -511,12 +418,10 @@ def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, o
                     if col_idx == 1:
                         cell.alignment = Alignment(horizontal='center')
     
-    # Collect unallocated students
     unallocated_students = []
     for group_key, remaining_students in course_subject_groups.items():
         unallocated_students.extend(remaining_students)
     
-    # Create Room Allotment Chart as first sheet
     create_room_allotment_sheet(wb, room_allocations, date_obj, start_dt, end_dt)
     
     # Unallocated sheet
@@ -538,8 +443,7 @@ def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, o
             cell.border = THIN_BORDER
         
         for idx, student in enumerate(unallocated_students):
-            ws_unalloc.append([student["USN"], student["Name"], student["ExtractedCourse"], student["SubjectCode"]])
-            
+            ws_unalloc.append([student["USN"], student["Name"], student["ExtractedCourse"], student["SubjectCode"]])   
             row_num = 4 + idx
             for col_idx in range(1, 5):
                 cell = ws_unalloc.cell(row=row_num, column=col_idx)
@@ -548,16 +452,12 @@ def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, o
                 if col_idx == 1:
                     cell.alignment = Alignment(horizontal='center')
     
-    # Summary sheet
     total_students = len(session_students)
     average_room_capacity = rooms_df['Rows'].astype(int) * rooms_df['Cols'].astype(int)
     avg_capacity = average_room_capacity.mean()
-    
     ws_summary = wb.create_sheet(title="Session Summary")
-    
     date_str = date_obj.strftime("%d-%b-%Y")
     session_str = f"{start_dt.strftime('%I:%M%p')} TO {end_dt.strftime('%I:%M%p')}"
-    
     ws_summary.append([f"Exam Session Summary - {date_str} {session_str}"])
     ws_summary['A1'].font = Font(name='Calibri', bold=True, size=16, color='FFFFFF')
     ws_summary.merge_cells('A1:C1')
@@ -578,11 +478,9 @@ def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, o
     for row_idx, row_data in enumerate(stats_data):
         ws_summary.append(row_data)
         current_row = row_idx + 3
-        
         for col_idx in range(1, 4):
             cell = ws_summary.cell(row=current_row, column=col_idx)
-            cell.font = Font(name='Calibri', size=10)
-            
+            cell.font = Font(name='Calibri', size=10) 
             if row_idx == 0:
                 cell.font = Font(name='Calibri', bold=True, size=11)
                 cell.fill = PatternFill(start_color='D9EAF7', end_color='D9EAF7', fill_type='solid')
@@ -590,19 +488,16 @@ def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, o
             elif row_data[0] == "":
                 continue
             else:
-                if col_idx == 2 or col_idx == 3:
+                if col_idx ==2 or col_idx==3:
                     cell.alignment = Alignment(horizontal='center')
-            
             if row_data[0] != "":
                 cell.border = THIN_BORDER
-    
-    # Course distribution
+
     ws_summary.append([])
     ws_summary.append(["Course Distribution"])
     course_header_row = len(stats_data) + 5
     ws_summary.cell(row=course_header_row, column=1).font = Font(name='Calibri', bold=True, size=12)
     ws_summary.cell(row=course_header_row, column=1).fill = PatternFill(start_color='E7E6E6', end_color='E7E6E6', fill_type='solid')
-    
     ws_summary.append(["Course", "Students", "Percentage"])
     course_table_header = course_header_row + 1
     for col_idx in range(1, 4):
@@ -616,11 +511,9 @@ def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, o
     for student in session_students.itertuples():
         course = extract_course_from_usn(student.USN)
         course_count[course] += 1
-    
     for idx, (course, count) in enumerate(course_count.items()):
         percentage = f"{count/total_students*100:.1f}%" if total_students > 0 else "0%"
         ws_summary.append([course, count, percentage])
-        
         current_row = course_table_header + 1 + idx
         for col_idx in range(1, 4):
             cell = ws_summary.cell(row=current_row, column=col_idx)
@@ -635,28 +528,23 @@ def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, o
     ws_summary.column_dimensions['B'].width = 15
     ws_summary.column_dimensions['C'].width = 15
     
-    # Save file
     date_str = date_obj.strftime("%d-%b-%Y")
     session_str = f"{start_dt.strftime('%I-%M%p')} TO {end_dt.strftime('%I-%M%p')}"
     filename = f"Roomallotment on {date_str} {session_str}.xlsx"
     filepath = os.path.join(output_folder, filename)
     wb.save(filepath)
-    
     return filename, len(all_allocated_students), len(unallocated_students)
 
+
 def save_conflicts(conflicts, input_filename, date_str, session_str, output_folder):
-    """Save conflict report"""
     conflicts_folder = os.path.join(output_folder, "Conflicts")
     os.makedirs(conflicts_folder, exist_ok=True)
-    
     base_name = os.path.splitext(input_filename)[0]
     conflict_filename = f"Conflicts_{base_name}.xlsx"
     conflict_filepath = os.path.join(conflicts_folder, conflict_filename)
-    
     wb = Workbook()
     ws = wb.active
     ws.title = "Conflicts"
-    
     ws.append([f"CONFLICTS DETECTED - {date_str} {session_str}"])
     ws['A1'].font = Font(name='Calibri', bold=True, size=14, color='CC0000')
     ws['A1'].alignment = Alignment(horizontal='center')
@@ -665,18 +553,15 @@ def save_conflicts(conflicts, input_filename, date_str, session_str, output_fold
     
     headers = ["USN", "Student Name", "Branch", "Conflicting Subjects", "Subject Count"]
     ws.append(headers)
-    
     for col_idx in range(1, 6):
         cell = ws.cell(row=3, column=col_idx)
         cell.font = Font(name='Calibri', bold=True, size=11)
         cell.fill = PatternFill(start_color='FFE6E6', end_color='FFE6E6', fill_type='solid')
         cell.alignment = Alignment(horizontal='center', vertical='center')
         cell.border = THIN_BORDER
-    
     for idx, conflict in enumerate(conflicts):
         row_data = [conflict['USN'], conflict['Name'], conflict['Branch'], conflict['Subjects'], conflict['SubjectCount']]
         ws.append(row_data)
-        
         row_num = 4 + idx
         for col_idx in range(1, 6):
             cell = ws.cell(row=row_num, column=col_idx)
@@ -691,23 +576,17 @@ def save_conflicts(conflicts, input_filename, date_str, session_str, output_fold
     ws.column_dimensions['C'].width = 12
     ws.column_dimensions['D'].width = 50
     ws.column_dimensions['E'].width = 15
-    
     wb.save(conflict_filepath)
     return conflict_filename
 
-# ----------------------------
-# Main Processing Functions
-# ----------------------------
+
 def process_session_files(session_files, rooms_df, output_folder):
-    """Process multiple session files (Mode 1)"""
-    results = []
+    results=[]
     
     for session_file in session_files:
         try:
-            # Extract metadata
             date_str, time_str = extract_metadata(session_file)
             date_obj, start_dt, end_dt = normalize_datetime(date_str, time_str)
-            
             if not date_obj:
                 results.append({
                     'file': os.path.basename(session_file),
@@ -715,11 +594,8 @@ def process_session_files(session_files, rooms_df, output_folder):
                     'message': 'Could not extract date/time from file'
                 })
                 continue
-            
-            # Read students
             students_df = read_students_from_file(session_file)
-            
-            # Check conflicts
+
             conflicts = check_conflicts(students_df)
             if conflicts:
                 conflict_file = save_conflicts(
@@ -736,8 +612,7 @@ def process_session_files(session_files, rooms_df, output_folder):
                     'conflict_file': conflict_file
                 })
                 continue
-            
-            # Create output
+
             filename, allocated, unallocated = create_output_file(
                 students_df, 
                 rooms_df, 
@@ -746,7 +621,6 @@ def process_session_files(session_files, rooms_df, output_folder):
                 end_dt, 
                 output_folder
             )
-            
             results.append({
                 'file': os.path.basename(session_file),
                 'status': 'success',
@@ -762,103 +636,73 @@ def process_session_files(session_files, rooms_df, output_folder):
                 'status': 'error',
                 'message': str(e)
             })
-    
     return results
 
 def generate_sessions_from_centralized(students_df, schedule_df, temp_input_dir):
-    session_files = []
+    session_files=[]
 
     for _, sched in schedule_df.iterrows():
         raw_codes = str(sched['SubjectCode'])
-
         subject_codes = [
             code.strip()
             for code in re.split(r'[;,/]', raw_codes)
             if code.strip()
         ]
-
         session_students = students_df[
             students_df['SubjectCode'].isin(subject_codes)
         ]
-
         if session_students.empty:
             continue
-
         date_val = sched['Date']
         if hasattr(date_val, 'strftime'):
             date_str = date_val.strftime('%Y-%m-%d')
         else:
             date_str = str(date_val).replace('/', '-')
-
         session_str = str(sched['Session']).replace(' ', '_')
         time_str = SESSION_TIME_MAP.get(session_str.lower())
-
-        session_filename = f"{date_str}_{session_str}.xlsx"
+        session_filename =f"{date_str}_{session_str}.xlsx"
         session_path = os.path.join(temp_input_dir, session_filename)
-
         with pd.ExcelWriter(session_path, engine='openpyxl') as writer:
             meta_rows = [f"Date: {date_str}"]
-            if time_str:
-                meta_rows.append(f"Time: {time_str}")
-            else:
-                meta_rows.append(f"Session: {session_str}")
-
+            if time_str: meta_rows.append(f"Time: {time_str}")
+            else: meta_rows.append(f"Session: {session_str}")
             pd.DataFrame({'A': meta_rows}).to_excel(
                 writer, index=False, header=False
             )
-
             session_students.to_excel(
                 writer, startrow=3, index=False
             )
-
         session_files.append(session_path)
-
     return session_files
 
 
-# ----------------------------
-# CLI Version
-# ----------------------------
 def main_cli():
-    """Command line interface version"""
     input_folder = "Input"
     output_folder = "Output"
-    
     os.makedirs(input_folder, exist_ok=True)
     os.makedirs(output_folder, exist_ok=True)
-    
-    # Check for rooms file
     if not os.path.exists('Rooms.xlsx'):
         print("ERROR: Rooms.xlsx not found!")
         return
-    
-    rooms_df = pd.read_excel('Rooms.xlsx')
-    
-    # Get session files
+    rooms_df = pd.read_excel('Rooms.xlsx') 
     session_files = [
         os.path.join(input_folder, f) 
         for f in os.listdir(input_folder) 
         if f.endswith(('.xls', '.xlsx'))
     ]
-    
     if not session_files:
         print("ERROR: No session files found in Input folder!")
         return
-    
     print(f"Found {len(session_files)} session file(s)")
     print(f"Loaded {len(rooms_df)} rooms\n")
     
     results = process_session_files(session_files, rooms_df, output_folder)
-    
-    # Print summary
     print("\n" + "="*60)
     print("PROCESSING SUMMARY")
     print("="*60)
-    
     success_count = sum(1 for r in results if r['status'] == 'success')
     conflict_count = sum(1 for r in results if r['status'] == 'conflict')
     error_count = sum(1 for r in results if r['status'] == 'error')
-    
     print(f"Total files: {len(results)}")
     print(f"Successful: {success_count}")
     print(f"Conflicts: {conflict_count}")

@@ -5,8 +5,6 @@ import shutil
 from werkzeug.utils import secure_filename
 import zipfile
 from io import BytesIO
-
-# Import processing functions from main script
 from script import process_session_files, generate_sessions_from_centralized
 import pandas as pd
 
@@ -21,68 +19,59 @@ def index():
 def process():
     try:
         mode = request.form.get('mode')
-        
-        # Create temporary directories
-        temp_dir = tempfile.mkdtemp()
-        input_dir = os.path.join(temp_dir, 'input')
-        output_dir = os.path.join(temp_dir, 'output')
+        temp_dir =tempfile.mkdtemp()
+        input_dir =os.path.join(temp_dir, 'input')
+        output_dir =os.path.join(temp_dir, 'output')
         os.makedirs(input_dir)
         os.makedirs(output_dir)
         
-        if mode == 'session-files':
-            # Mode 1: Multiple session files + Rooms file
-            rooms_file = request.files.get('rooms')
-            session_files = request.files.getlist('sessions')
-            
+        if mode =='session-files':
+            rooms_file =request.files.get('rooms')
+            session_files =request.files.getlist('sessions')
             if not rooms_file or not session_files:
                 return jsonify({'error': 'Missing required files'}), 400
             
-            # Save rooms file
             rooms_path = os.path.join(temp_dir, 'Rooms.xlsx')
             rooms_file.save(rooms_path)
             rooms_df = pd.read_excel(rooms_path)
             
-            # Save session files
-            session_paths = []
+            session_paths= []
             for f in session_files:
                 if f.filename:
                     filepath = os.path.join(input_dir, secure_filename(f.filename))
                     f.save(filepath)
                     session_paths.append(filepath)
+            results =process_session_files(session_paths, rooms_df, output_dir)
             
-            # Process
-            results = process_session_files(session_paths, rooms_df, output_dir)
-            
-        elif mode == 'centralized':
-            rooms_file = request.files.get('rooms')
-            students_file = request.files.get('students')
-            schedule_file = request.files.get('schedule')
+        elif mode =='centralized':
+            rooms_file =request.files.get('rooms')
+            students_file =request.files.get('students')
+            schedule_file =request.files.get('schedule')
 
             if not all([rooms_file, students_file, schedule_file]):
                 return jsonify({'error': 'Missing required centralized files'}), 400
 
-            rooms_path = os.path.join(temp_dir, 'Rooms.xlsx')
-            students_path = os.path.join(temp_dir, 'Students.xlsx')
-            schedule_path = os.path.join(temp_dir, 'Schedule.xlsx')
+            rooms_path =os.path.join(temp_dir, 'Rooms.xlsx')
+            students_path =os.path.join(temp_dir, 'Students.xlsx')
+            schedule_path =os.path.join(temp_dir, 'Schedule.xlsx')
 
             rooms_file.save(rooms_path)
             students_file.save(students_path)
             schedule_file.save(schedule_path)
 
-            rooms_df = pd.read_excel(rooms_path)
-            students_df = pd.read_excel(students_path)
+            rooms_df= pd.read_excel(rooms_path)
+            students_df =pd.read_excel(students_path)
             schedule_df = pd.read_excel(schedule_path)
 
-            session_paths = generate_sessions_from_centralized(
+            session_paths= generate_sessions_from_centralized(
                 students_df,
                 schedule_df,
                 input_dir
             )
-
             if not session_paths:
                 return jsonify({'error': 'No sessions generated from schedule'}), 400
 
-            results = process_session_files(
+            results= process_session_files(
                 session_paths,
                 rooms_df,
                 output_dir
@@ -91,20 +80,17 @@ def process():
         else:
             return jsonify({'error': 'Invalid mode'}), 400
         
-        # Create ZIP of output files
-        zip_buffer = BytesIO()
+
+        zip_buffer =BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
             for root, dirs, files in os.walk(output_dir):
                 for file in files:
-                    file_path = os.path.join(root, file)
-                    arcname = os.path.relpath(file_path, output_dir)
+                    file_path =os.path.join(root, file)
+                    arcname =os.path.relpath(file_path, output_dir)
                     zip_file.write(file_path, arcname)
-        
         zip_buffer.seek(0)
         
-        # Cleanup
         shutil.rmtree(temp_dir)
-        
         return send_file(
             zip_buffer,
             mimetype='application/zip',
