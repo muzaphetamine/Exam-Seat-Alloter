@@ -1,0 +1,11 @@
+__pycache__/
+input/rooms/*
+input/schedules/*
+input/sessions/*
+input/students/*
+!input/rooms/.gitkeep
+!input/schedules/.gitkeep
+!input/sessions/.gitkeep
+!input/students/.gitkeep
+output/*
+!output/.gitkeep
