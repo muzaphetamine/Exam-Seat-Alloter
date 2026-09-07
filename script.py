@@ -7,21 +7,213 @@ import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-SESSION_TIME_MAP = {
+SESSION_TIME_MAP={
     'morning': '09:00',
     'afternoon': '14:00'
 }
-EXAM_DURATION_HOURS = 3
+EXAM_DURATION_HOURS=3
 THIN_BORDER = Border(
     left=Side(style="thin"),
     right=Side(style="thin"),
     top=Side(style="thin"),
     bottom=Side(style="thin")
 )
-HEADER_FILL = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
-TITLE_FONT = Font(bold=True, size=14, color="FFFFFF")
-HEADER_FONT = Font(bold=True, color="FFFFFF")
-BODY_FONT = Font(size=10)
+HEADER_FILL=PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
+TITLE_FONT =Font(bold=True, size=14, color="FFFFFF")
+HEADER_FONT =Font(bold=True, color="FFFFFF")
+BODY_FONT =Font(size=10)
+
+
+ROOM_COLUMNS={"RoomName", "Rows", "Cols"}
+CENTRALIZED_STUDENT_COLUMNS={"USN", "Name", "Course", "SubjectCode"}
+CENTRALIZED_SCHEDULE_COLUMNS={"Date", "Session", "SubjectCode"}
+SESSION_STUDENT_COLUMNS={"USN", "Name", "SubjectCode"}
+SUPPORTED_EXCEL_EXTENSIONS=(".xlsx", ".xls")
+
+
+def _excel_files(folder):
+    if not os.path.isdir(folder):
+        return []
+    return sorted(
+        os.path.join(folder, name)
+        for name in os.listdir(folder)
+        if os.path.isfile(os.path.join(folder, name))
+        and os.path.splitext(name)[1].lower() in SUPPORTED_EXCEL_EXTENSIONS
+    )
+
+
+def _read_excel_table(filepath):
+    ext=os.path.splitext(filepath)[1].lower()
+    return pd.read_excel(filepath, engine="xlrd" if ext == ".xls" else None)
+
+
+def _clean_columns(df):
+    df=df.copy()
+    df.columns=[str(c).strip() for c in df.columns]
+    return df
+
+
+def _missing_columns(df, required):
+    return sorted(required - set(df.columns))
+
+
+def read_rooms_from_files(filepaths):
+    frames=[]
+    errors=[]
+    for filepath in filepaths:
+        try:
+            df =_clean_columns(_read_excel_table(filepath))
+            missing =_missing_columns(df, ROOM_COLUMNS)
+            if missing:
+                raise ValueError(f"missing required columns: {', '.join(missing)}")
+            df=df[["RoomName", "Rows", "Cols"]].copy()
+            df=df.dropna(how="all")
+            df["RoomName"] =df["RoomName"].astype(str).str.strip()
+            if (df["RoomName"] == "").any() or df["RoomName"].eq("nan").any():
+                raise ValueError("contains a blank RoomName")
+            df["Rows"] =pd.to_numeric(df["Rows"], errors="coerce")
+            df["Cols"] =pd.to_numeric(df["Cols"], errors="coerce")
+            if df[["Rows", "Cols"]].isna().any().any():
+                raise ValueError("Rows and Cols must be numeric")
+            if (df[["Rows", "Cols"]] <= 0).any().any():
+                raise ValueError("Rows and Cols must be greater than zero")
+            df["Rows"] =df["Rows"].astype(int)
+            df["Cols"] =df["Cols"].astype(int)
+            frames.append(df)
+        except Exception as exc:
+            errors.append(f"{os.path.basename(filepath)}: {exc}")
+    if errors:
+        raise ValueError("Room input error(s):\n- " + "\n- ".join(errors))
+    if not frames:
+        raise ValueError("No room Excel files were supplied.")
+    merged= pd.concat(frames, ignore_index=True)
+    duplicate_names= merged[merged.duplicated("RoomName", keep=False)]["RoomName"].unique().tolist()
+    if duplicate_names:
+        raise ValueError("Duplicate room names found across room files: " + ", ".join(map(str, duplicate_names)))
+    return merged
+
+
+def read_centralized_students_from_files(filepaths):
+    frames =[]
+    errors=[]
+    for filepath in filepaths:
+        try:
+            df =_clean_columns(_read_excel_table(filepath))
+            missing=_missing_columns(df, CENTRALIZED_STUDENT_COLUMNS)
+            if missing:
+                raise ValueError(f"missing required columns: {', '.join(missing)}")
+            df =df[["USN", "Name", "Course", "SubjectCode"]].copy()
+            df =df.dropna(how="all")
+            for col in ["USN", "Name", "Course", "SubjectCode"]:
+                df[col] =df[col].fillna("").astype(str).str.strip()
+            if (df["USN"] == "").any() or (df["SubjectCode"] == "").any():
+                raise ValueError("USN and SubjectCode cannot be blank")
+            frames.append(df)
+        except Exception as exc:
+            errors.append(f"{os.path.basename(filepath)}: {exc}")
+    if errors:
+        raise ValueError("Student input error(s):\n- " + "\n- ".join(errors))
+    if not frames:
+        raise ValueError("No student Excel files were supplied.")
+    merged= pd.concat(frames, ignore_index=True)
+    duplicate_rows=merged.duplicated(subset=["USN", "SubjectCode"], keep=False)
+    if duplicate_rows.any():
+        duplicates =merged.loc[duplicate_rows, ["USN", "SubjectCode"]].drop_duplicates()
+        details= [f"{r.USN} / {r.SubjectCode}" for r in duplicates.itertuples()]
+        raise ValueError("Duplicate student-subject records found: " + ", ".join(details))
+    return merged
+
+
+def read_centralized_schedules_from_files(filepaths):
+    frames=[]
+    errors=[]
+    for filepath in filepaths:
+        try:
+            df = _clean_columns(_read_excel_table(filepath))
+            missing = _missing_columns(df, CENTRALIZED_SCHEDULE_COLUMNS)
+            if missing:
+                raise ValueError(f"missing required columns: {', '.join(missing)}")
+            df = df[["Date", "Session", "SubjectCode"]].copy()
+            df = df.dropna(how="all")
+            df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+            if df["Date"].isna().any():
+                raise ValueError("contains an invalid or blank Date")
+            df["Session"] = df["Session"].fillna("").astype(str).str.strip()
+            df["SubjectCode"] = df["SubjectCode"].fillna("").astype(str).str.strip()
+            if (df["Session"] == "").any() or (df["SubjectCode"] == "").any():
+                raise ValueError("Session and SubjectCode cannot be blank")
+            frames.append(df)
+        except Exception as exc:
+            errors.append(f"{os.path.basename(filepath)}: {exc}")
+
+    if errors:
+        raise ValueError("Schedule input error(s):\n- " + "\n- ".join(errors))
+    if not frames:
+        raise ValueError("No schedule Excel files were supplied.")
+
+    merged = pd.concat(frames, ignore_index=True)
+    duplicate_rows = merged.duplicated(
+        subset=["Date", "Session", "SubjectCode"], keep=False
+    )
+    if duplicate_rows.any():
+        duplicates = merged.loc[duplicate_rows, ["Date", "Session", "SubjectCode"]].drop_duplicates()
+        details = [
+            f"{r.Date.strftime('%d-%m-%Y')} / {r.Session} / {r.SubjectCode}"
+            for r in duplicates.itertuples()
+        ]
+        raise ValueError("Duplicate schedule records found: " + ", ".join(details))
+    return merged
+
+
+def validate_session_file(filepath):
+    date_str, time_str = extract_metadata(filepath)
+    date_obj, start_dt, end_dt = normalize_datetime(date_str, time_str)
+    if not date_obj:
+        raise ValueError("could not extract a valid Date and Time from the session metadata")
+
+    ext = os.path.splitext(filepath)[1].lower()
+    df = pd.read_excel(filepath, skiprows=3, engine="xlrd" if ext == ".xls" else None)
+    df = _clean_columns(df)
+    df = df.rename(columns={
+        "S No": "SNo",
+        "Student Name": "Name",
+        "Subject Code": "SubjectCode",
+        "Subject Name": "SubjectName",
+        "Semester": "Semester"
+    })
+    missing = _missing_columns(df, SESSION_STUDENT_COLUMNS)
+    if missing:
+        raise ValueError(
+            "missing required session table columns: " + ", ".join(missing)
+        )
+    return True
+
+
+def ingest_session_files(filepaths):
+    if not filepaths:
+        raise ValueError("No session Excel files were supplied.")
+    errors = []
+    for filepath in filepaths:
+        try:
+            validate_session_file(filepath)
+        except Exception as exc:
+            errors.append(f"{os.path.basename(filepath)}: {exc}")
+    if errors:
+        raise ValueError("Session input error(s):\n- " + "\n- ".join(errors))
+    return filepaths
+
+
+def ingest_from_input_folders(input_root):
+    rooms = _excel_files(os.path.join(input_root, "rooms"))
+    students = _excel_files(os.path.join(input_root, "students"))
+    schedules = _excel_files(os.path.join(input_root, "schedules"))
+    sessions = _excel_files(os.path.join(input_root, "sessions"))
+    return {
+        "rooms": rooms,
+        "students": students,
+        "schedules": schedules,
+        "sessions": sessions,
+    }
 
 
 def extract_course_from_usn(usn):
@@ -201,7 +393,7 @@ def create_room_allotment_sheet(wb, allocations, date_obj, start_dt, end_dt):
     date_str = date_obj.strftime("%d-%b-%Y")
     session_str = f"{start_dt.strftime('%I:%M%p')} TO {end_dt.strftime('%I:%M%p')}"
     
-    ws.append(["VTU Theory Exam - CANDIDATE EXAM HALL ALLOTMENT"])
+    ws.append(["EXAM SEAT ALLOCATION"])
     ws.merge_cells("A1:G1")
     ws["A1"].font = TITLE_FONT
     ws["A1"].fill = HEADER_FILL
@@ -424,7 +616,7 @@ def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, o
     
     create_room_allotment_sheet(wb, room_allocations, date_obj, start_dt, end_dt)
     
-    # Unallocated sheet
+    #Unallocated sheet
     if unallocated_students:
         ws_unalloc = wb.create_sheet(title="Unallocated Students")
         
@@ -465,6 +657,11 @@ def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, o
     ws_summary['A1'].fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
     ws_summary.append([])
     
+    extra_rooms = (
+        max(0, -(-len(unallocated_students) // int(avg_capacity)))
+        if avg_capacity > 0 else 0
+    )
+
     stats_data = [
         ["Metric", "Value", "Percentage"],
         ["Total Students", total_students, "100%"],
@@ -473,6 +670,7 @@ def create_output_file(session_students, rooms_df, date_obj, start_dt, end_dt, o
         ["", "", ""],
         ["Average Room Capacity", int(avg_capacity), ""],
         ["Rooms Used", len(rooms_df), ""],
+        ["Extra Rooms Needed", extra_rooms, ""],
     ]
     
     for row_idx, row_data in enumerate(stats_data):
@@ -582,7 +780,6 @@ def save_conflicts(conflicts, input_filename, date_str, session_str, output_fold
 
 def process_session_files(session_files, rooms_df, output_folder):
     results=[]
-    
     for session_file in session_files:
         try:
             date_str, time_str = extract_metadata(session_file)
@@ -640,7 +837,6 @@ def process_session_files(session_files, rooms_df, output_folder):
 
 def generate_sessions_from_centralized(students_df, schedule_df, temp_input_dir):
     session_files=[]
-
     for _, sched in schedule_df.iterrows():
         raw_codes = str(sched['SubjectCode'])
         subject_codes = [
@@ -716,6 +912,7 @@ def main_cli():
             print(f"  Allocated: {result['allocated']}/{result['total']}")
             if result['unallocated'] > 0:
                 print(f"  WARNING: {result['unallocated']} students unallocated")
+
 
 if __name__ == "__main__":
     main_cli()
