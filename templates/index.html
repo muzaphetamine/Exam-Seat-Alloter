@@ -1,335 +1,453 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<title>Smart Exam Seat Alloter</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <title>Smart Exam Seat Alloter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<style>
-:root {
-    --bg: #0f172a;
-    --card: #111827;
-    --panel: #020617;
-    --text: #e5e7eb;
-    --muted: #9ca3af;
-    --accent: #38bdf8;
-    --border: #1f2937;
-    --success: #22c55e;
-}
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #111827;
+            --panel: #020617;
+            --text: #e5e7eb;
+            --muted: #9ca3af;
+            --accent: #38bdf8;
+            --border: #1f2937;
+            --success: #22c55e;
+        }
 
-:root.light {
-  --bg: #f4f6f8;
-  --card: #ffffff;
-  --panel: #f1f5f9;
-  --text: #020617;
-  --muted: #475569;
-  --accent: #2563eb;
-  --border: #e2e8f0;
-  --success: #16a34a;
-}
+        :root.light {
+            --bg: #f4f6f8;
+            --card: #ffffff;
+            --panel: #f1f5f9;
+            --text: #020617;
+            --muted: #475569;
+            --accent: #2563eb;
+            --border: #e2e8f0;
+            --success: #16a34a;
+        }
 
-* {
-    box-sizing: border-box;
-}
+        * {
+            box-sizing: border-box;
+        }
 
-body {
-    margin: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-}
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
 
-.container {
-    max-width: 900px;
-    width: 100%;
-}
+        .container {
+            max-width: 900px;
+            width: 100%;
+        }
 
-.card {
-    background: var(--card);
-    border-radius: 14px;
-    padding: 32px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    border: 1px solid var(--border);
-}
+        .card {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 32px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border);
+        }
 
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 28px;
-}
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+        }
 
-h1 {
-    font-size: 1.5rem;
-    margin: 0;
-    background: linear-gradient(135deg, var(--accent) 0%, #06b6d4 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
+        h1 {
+            font-size: 1.5rem;
+            margin: 0;
+            background: linear-gradient(135deg, var(--accent) 0%, #06b6d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
-.subtitle {
-    color: var(--muted);
-    font-size: 0.9rem;
-    margin-top: 4px;
-}
+        .subtitle {
+            color: var(--muted);
+            font-size: 0.9rem;
+            margin-top: 4px;
+        }
 
-/* MODE SELECTION */
-.mode-selector {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 24px;
-}
+        .mode-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
 
-.mode-option {
-    position: relative;
-}
+        .mode-option {
+            position: relative;
+        }
 
-.mode-option input[type="radio"] {
-    position: absolute;
-    opacity: 0;
-}
+        .mode-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+        }
 
-.mode-option label {
-    display: block;
-    padding: 16px;
-    border: 2px solid var(--border);
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: center;
-}
+        .mode-option label {
+            display: block;
+            padding: 16px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
 
-.mode-option label:hover {
-    border-color: var(--accent);
-    background: rgba(56, 189, 248, 0.05);
-}
+        .mode-option label:hover {
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.05);
+        }
 
-.mode-option input[type="radio"]:checked + label {
-    border-color: var(--accent);
-    background: rgba(56, 189, 248, 0.1);
-}
+        .mode-option input[type="radio"]:checked+label {
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.1);
+        }
 
-.mode-title {
-    font-weight: 600;
-    font-size: 1rem;
-    margin-bottom: 4px;
-}
+        .mode-title {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
 
-.mode-desc {
-    font-size: 0.8rem;
-    color: var(--muted);
-}
+        .mode-desc {
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
 
-/* FILE UPLOAD SECTIONS */
-.upload-section {
-    display: none;
-    animation: fadeIn 0.3s;
-}
+        /* FILE UPLOAD SECTIONS */
+        .upload-section {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
 
-.upload-section.active {
-    display: block;
-}
+        .upload-section.active {
+            display: block;
+        }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
 
-.file-group {
-    margin-bottom: 20px;
-}
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
 
-.file-group label {
-    display: block;
-    font-size: 0.9rem;
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: var(--text);
-}
+        .file-group {
+            margin-bottom: 20px;
+        }
 
-.file-group small {
-    color: var(--muted);
-    font-size: 0.85rem;
-}
+        .file-group-header {
+            display: grid;
+            grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr);
+            gap: 12px;
+            margin-bottom: 8px;
+            align-items: end;
+        }
 
-.dropzone {
-    border: 2px dashed var(--border);
-    border-radius: 10px;
-    padding: 24px;
-    text-align: center;
-    transition: 0.2s;
-    cursor: pointer;
-}
+        .file-group-header label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text);
+        }
 
-.dropzone:hover {
-    border-color: var(--accent);
-    background: rgba(56, 189, 248, 0.05);
-}
+        .selected-files-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2px;
+            font-size: 0.78rem;
+            color: var(--muted);
+        }
 
-.dropzone.active {
-    border-color: var(--accent);
-    background: rgba(56, 189, 248, 0.1);
-}
+        .file-group small {
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
 
-.dropzone input {
-    display: none;
-}
+        .dropzone {
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            padding: 24px;
+            text-align: center;
+            transition: 0.2s;
+            cursor: pointer;
+        }
 
-.dropzone-content {
-    pointer-events: none;
-}
+        .dropzone:hover {
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.05);
+        }
 
-.dropzone-icon {
-    font-size: 2rem;
-    margin-bottom: 8px;
-}
+        .dropzone.active {
+            border-color: var(--accent);
+            background: rgba(56, 189, 248, 0.1);
+        }
 
-.dropzone-text {
-    margin: 0;
-    font-size: 0.9rem;
-}
+        .dropzone input {
+            display: none;
+        }
 
-.dropzone-hint {
-    margin: 4px 0 0;
-    color: var(--muted);
-    font-size: 0.85rem;
-}
+        .dropzone-content {
+            pointer-events: none;
+        }
 
-/* FILE LIST */
-.file-list {
-    margin-top: 12px;
-    padding: 0;
-    list-style: none;
-}
+        .dropzone-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
 
-.file-list li {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    padding: 10px 12px;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    margin-bottom: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
+        .dropzone-text {
+            margin: 0;
+            font-size: 0.9rem;
+        }
 
-.file-name {
-    flex: 1;
-    word-break: break-all;
-}
+        .dropzone-hint {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
 
-.file-size {
-    color: var(--muted);
-    font-size: 0.75rem;
-    margin-left: 12px;
-}
+        .upload-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr);
+            gap: 12px;
+            align-items: stretch;
+        }
 
-/* BUTTON */
-button[type="submit"] {
-    width: 100%;
-    padding: 14px;
-    border-radius: 10px;
-    border: none;
-    background: linear-gradient(135deg, var(--accent) 0%, #06b6d4 100%);
-    color: #020617;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    margin-top: 24px;
-}
+        .upload-row .dropzone,
+        .file-list-panel {
+            min-height: 140px;
+            height: 140px;
+        }
 
-button[type="submit"]:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(56, 189, 248, 0.3);
-}
+        .file-list-panel {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: var(--panel);
+            padding: 8px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent;
+        }
 
-button[type="submit"]:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-}
+        .file-list-panel::-webkit-scrollbar {
+            width: 8px;
+        }
 
-/* STATUS */
-.status {
-    margin-top: 16px;
-    padding: 12px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    display: none;
-    align-items: center;
-    gap: 8px;
-}
+        .file-list-panel::-webkit-scrollbar-track {
+            background: transparent;
+            border-radius: 10px;
+        }
 
-.status.active {
-    display: flex;
-}
+        .file-list-panel::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+        }
 
-.status.processing {
-    background: rgba(56, 189, 248, 0.1);
-    border: 1px solid rgba(56, 189, 248, 0.3);
-    color: var(--accent);
-}
+        .file-list-panel::-webkit-scrollbar-thumb:hover {
+            background: var(--muted);
+        }
 
-.status.success {
-    background: rgba(34, 197, 94, 0.1);
-    border: 1px solid rgba(34, 197, 94, 0.3);
-    color: var(--success);
-}
+        .file-list-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.82rem;
+            padding: 12px;
+        }
 
-.status.error {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #ef4444;
-}
+        .file-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
 
-.spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid var(--accent);
-    border-top-color: transparent;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
+        .file-list li {
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 8px 9px;
+            border-radius: 7px;
+            font-size: 0.8rem;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
+        .file-name {
+            flex: 1;
+            min-width: 0;
+            word-break: break-all;
+        }
 
-.footer {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 0.8rem;
-    color: var(--muted);
-}
+        .file-size {
+            color: var(--muted);
+            font-size: 0.72rem;
+            white-space: nowrap;
+        }
 
-/* RESPONSIVE */
-@media (max-width: 640px) {
-    .mode-selector {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
+        .file-remove {
+            width: 24px;
+            height: 24px;
+            flex: 0 0 24px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            padding: 0;
+            font-size: 0.9rem;
+            line-height: 1;
+            margin: 0;
+        }
+
+        .file-remove:hover {
+            color: #ef4444;
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.08);
+        }
+
+        @media (max-width: 760px) {
+            .upload-row {
+                grid-template-columns: 1fr;
+            }
+
+            .upload-row .dropzone,
+            .file-list-panel {
+                height: auto;
+                min-height: 140px;
+            }
+
+            .file-list-panel {
+                max-height: 180px;
+            }
+        }
+
+        button[type="submit"] {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, var(--accent) 0%, #06b6d4 100%);
+            color: #020617;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 24px;
+        }
+
+        button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(56, 189, 248, 0.3);
+        }
+
+        button[type="submit"]:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status.active {
+            display: flex;
+        }
+
+        .status.processing {
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            color: var(--accent);
+        }
+
+        .status.success {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: var(--success);
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--accent);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+
+        @media (max-width: 760px) {
+
+            .upload-row,
+            .file-group-header {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .mode-selector {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 
 <body>
-
-<div class="container">
-    <div class="card">
-        <div class="header">
-            <div>
-                <h1>Smart Exam Seat Alloter</h1>
-                <div class="subtitle">Intelligent room allocation with room-wise visualization</div>
-            </div>
-            <button id="themeToggle" style="
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <div>
+                    <h1>Smart Exam Seat Alloter</h1>
+                    <div class="subtitle">Intelligent room allocation with room-wise visualization</div>
+                </div>
+                <button id="themeToggle" style="
                 background: none;
                 border: 1px solid var(--border);
                 color: var(--text);
@@ -338,285 +456,360 @@ button[type="submit"]:disabled {
                 cursor: pointer;
                 font-size: 0.8rem;
                 ">
-                🌙 / ☀️
+                    🌙 / ☀️
                 </button>
-        </div>
-
-        <!-- MODE SELECTION -->
-        <div class="mode-selector">
-            <div class="mode-option">
-                <input type="radio" id="mode1" name="mode" value="session-files" checked>
-                <label for="mode1">
-                    <div class="mode-title">📁 Session Files</div>
-                    <div class="mode-desc">Multiple session files</div>
-                </label>
             </div>
-            <div class="mode-option">
-                <input type="radio" id="mode2" name="mode" value="centralized">
-                <label for="mode2">
-                    <div class="mode-title">🗄️ Centralized Data</div>
-                    <div class="mode-desc">Students + Schedule</div>
-                </label>
-            </div>
-        </div>
 
-        <form id="uploadForm" enctype="multipart/form-data">
-            
-            <!-- SESSION FILES MODE -->
-            <div id="sessionFilesMode" class="upload-section active">
-                <div class="file-group">
-                    <label>
-                        Rooms File
-                        <small>(Required - Rooms.xlsx)</small>
+            <div class="mode-selector">
+                <div class="mode-option">
+                    <input type="radio" id="mode1" name="mode" value="session-files" checked>
+                    <label for="mode1">
+                        <div class="mode-title">📁 Session Files</div>
+                        <div class="mode-desc">Multiple session files</div>
                     </label>
-                    <div class="dropzone" onclick="document.getElementById('roomsFile').click()">
-                        <input type="file" id="roomsFile" name="rooms" accept=".xls,.xlsx">
-                        <div class="dropzone-content">
-                            <div class="dropzone-icon">📊</div>
-                            <p class="dropzone-text">Click to upload Rooms.xlsx</p>
-                            <p class="dropzone-hint">Contains room layout information</p>
-                        </div>
-                    </div>
-                    <ul id="roomsList" class="file-list"></ul>
                 </div>
-
-                <div class="file-group">
-                    <label>
-                        Session Files
-                        <small>(Multiple files - one per exam session)</small>
+                <div class="mode-option">
+                    <input type="radio" id="mode2" name="mode" value="centralized">
+                    <label for="mode2">
+                        <div class="mode-title">🗄️ Centralized Data</div>
+                        <div class="mode-desc">Students + Schedule</div>
                     </label>
-                    <div class="dropzone" onclick="document.getElementById('sessionsFiles').click()">
-                        <input type="file" id="sessionsFiles" name="sessions" accept=".xls,.xlsx" multiple>
-                        <div class="dropzone-content">
-                            <div class="dropzone-icon">📂</div>
-                            <p class="dropzone-text">Click or drop session files here</p>
-                            <p class="dropzone-hint">Each file contains one exam session</p>
-                        </div>
-                    </div>
-                    <ul id="sessionsList" class="file-list"></ul>
                 </div>
             </div>
 
-            <!-- CENTRALIZED MODE -->
-            <div id="centralizedMode" class="upload-section">
-                <div class="file-group">
-                    <label>
-                        Rooms File
-                        <small>(Required - Rooms.xlsx)</small>
-                    </label>
-                    <div class="dropzone" onclick="document.getElementById('roomsFile2').click()">
-                        <input type="file" id="roomsFile2" name="rooms" accept=".xls,.xlsx">
-                        <div class="dropzone-content">
-                            <div class="dropzone-icon">📊</div>
-                            <p class="dropzone-text">Click to upload Rooms.xlsx</p>
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div id="sessionFilesMode" class="upload-section active">
+                    <div class="file-group">
+                        <div class="file-group-header">
+                            <label>
+                                Rooms File
+                            </label>
+                            <div class="selected-files-label">
+                                <span>Selected files</span>
+                                <span id="roomsCount">0 files</span>
+                            </div>
+                        </div>
+                        <div class="upload-row">
+                            <div class="dropzone" onclick="document.getElementById('roomsFile').click()">
+                                <input type="file" id="roomsFile" name="rooms" accept=".xls,.xlsx" multiple>
+                                <div class="dropzone-content">
+                                    <div class="dropzone-icon">📊</div>
+                                    <p class="dropzone-text">Click or drop room files here</p>
+                                </div>
+                            </div>
+                            <div class="file-list-panel">
+                                <div id="roomsList" class="file-list"></div>
+                            </div>
                         </div>
                     </div>
-                    <ul id="roomsList2" class="file-list"></ul>
+
+                    <div class="file-group">
+                        <div class="file-group-header">
+                            <label>
+                                Session Files
+                            </label>
+                            <div class="selected-files-label">
+                                <span>Selected files</span>
+                                <span id="sessionsCount">0 files</span>
+                            </div>
+                        </div>
+                        <div class="upload-row">
+                            <div class="dropzone" onclick="document.getElementById('sessionsFiles').click()">
+                                <input type="file" id="sessionsFiles" name="sessions" accept=".xls,.xlsx" multiple>
+                                <div class="dropzone-content">
+                                    <div class="dropzone-icon">📂</div>
+                                    <p class="dropzone-text">Click or drop session files here</p>
+                                    <p class="dropzone-hint">Each file contains one exam session</p>
+                                </div>
+                            </div>
+                            <div class="file-list-panel">
+                                <div id="sessionsList" class="file-list"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="file-group">
-                    <label>
-                        Students Database
-                        <small>(Required - Students.xlsx)</small>
-                    </label>
-                    <div class="dropzone" onclick="document.getElementById('studentsFile').click()">
-                        <input type="file" id="studentsFile" name="students" accept=".xls,.xlsx">
-                        <div class="dropzone-content">
-                            <div class="dropzone-icon">👥</div>
-                            <p class="dropzone-text">Click to upload Students.xlsx</p>
-                        </div>
-                    </div>
-                    <ul id="studentsList" class="file-list"></ul>
-                </div>
 
-                <div class="file-group">
-                    <label>
-                        Exam Schedule
-                        <small>(Required - Schedule.xlsx)</small>
-                    </label>
-                    <div class="dropzone" onclick="document.getElementById('scheduleFile').click()">
-                        <input type="file" id="scheduleFile" name="schedule" accept=".xls,.xlsx">
-                        <div class="dropzone-content">
-                            <div class="dropzone-icon">📅</div>
-                            <p class="dropzone-text">Click to upload Schedule.xlsx</p>
+                <div id="centralizedMode" class="upload-section">
+                    <div class="file-group">
+                        <div class="file-group-header">
+                            <label>
+                                Rooms File
+                            </label>
+                            <div class="selected-files-label">
+                                <span>Selected files</span>
+                                <span id="roomsCount2">0 files</span>
+                            </div>
+                        </div>
+                        <div class="upload-row">
+                            <div class="dropzone" onclick="document.getElementById('roomsFile2').click()">
+                                <input type="file" id="roomsFile2" name="rooms" accept=".xls,.xlsx" multiple>
+                                <div class="dropzone-content">
+                                    <div class="dropzone-icon">📊</div>
+                                    <p class="dropzone-text">Click or drop room files here</p>
+                                </div>
+                            </div>
+                            <div class="file-list-panel">
+                                <div id="roomsList2" class="file-list"></div>
+                            </div>
                         </div>
                     </div>
-                    <ul id="scheduleList" class="file-list"></ul>
+                    <div class="file-group">
+                        <div class="file-group-header">
+                            <label>
+                                Students Files
+                            </label>
+                            <div class="selected-files-label">
+                                <span>Selected files</span>
+                                <span id="studentsCount">0 files</span>
+                            </div>
+                        </div>
+                        <div class="upload-row">
+                            <div class="dropzone" onclick="document.getElementById('studentsFile').click()">
+                                <input type="file" id="studentsFile" name="students" accept=".xls,.xlsx" multiple>
+                                <div class="dropzone-content">
+                                    <div class="dropzone-icon">👥</div>
+                                    <p class="dropzone-text">Click or drop student files here</p>
+                                </div>
+                            </div>
+                            <div class="file-list-panel">
+                                <div id="studentsList" class="file-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="file-group">
+                        <div class="file-group-header">
+                            <label>
+                                Exam Schedule
+                            </label>
+                            <div class="selected-files-label">
+                                <span>Selected files</span>
+                                <span id="scheduleCount">0 files</span>
+                            </div>
+                        </div>
+                        <div class="upload-row">
+                            <div class="dropzone" onclick="document.getElementById('scheduleFile').click()">
+                                <input type="file" id="scheduleFile" name="schedule" accept=".xls,.xlsx" multiple>
+                                <div class="dropzone-content">
+                                    <div class="dropzone-icon">📅</div>
+                                    <p class="dropzone-text">Click or drop schedule files here</p>
+                                </div>
+                            </div>
+                            <div class="file-list-panel">
+                                <div id="scheduleList" class="file-list"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                <button type="submit" id="submitBtn">
+                    Generate Allocations
+                </button>
+                <div id="status" class="status"></div>
+            </form>
+
+            <div class="footer">
+                2025
             </div>
-
-            <button type="submit" id="submitBtn">
-                Generate Allocations
-            </button>
-
-            <div id="status" class="status"></div>
-        </form>
-
-        <div class="footer">
-            Developed by Muza — 2025
         </div>
     </div>
-</div>
 
-<script>
-// Mode switching
-document.querySelectorAll('input[name="mode"]').forEach(radio => {
-    radio.addEventListener('change', (e) => {
-        document.querySelectorAll('.upload-section').forEach(section => {
-            section.classList.remove('active');
+    <script>
+        document.querySelectorAll('input[name="mode"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                document.querySelectorAll('.upload-section').forEach(section => {
+                    section.classList.remove('active');
+                });
+                if (e.target.value === 'session-files') {
+                    document.getElementById('sessionFilesMode').classList.add('active');
+                } else {
+                    document.getElementById('centralizedMode').classList.add('active');
+                }
+            });
         });
-        
-        if (e.target.value === 'session-files') {
-            document.getElementById('sessionFilesMode').classList.add('active');
-        } else {
-            document.getElementById('centralizedMode').classList.add('active');
-        }
-    });
-});
 
-// File upload handlers
-function setupFileInput(inputId, listId) {
-    const input = document.getElementById(inputId);
-    const list = document.getElementById(listId);
-    
-    input.addEventListener('change', () => {
-        list.innerHTML = '';
-        
-        if (input.files.length === 0) {
-            return;
+
+        const fileState = new Map();
+        function fileKey(file) {
+            return [file.name, file.size, file.lastModified].join('::');
         }
-        
-        Array.from(input.files).forEach(file => {
-            const li = document.createElement('li');
-            const size = (file.size / 1024).toFixed(1) + ' KB';
-            
-            li.innerHTML = `
-                <span class="file-name">${file.name}</span>
-                <span class="file-size">${size}</span>
-            `;
-            list.appendChild(li);
+        function setInputFiles(input, files) {
+            const dataTransfer = new DataTransfer();
+            files.forEach(file => dataTransfer.items.add(file));
+            input.files = dataTransfer.files;
+        }
+        function updateCount(countElementId, count) {
+            const element = document.getElementById(countElementId);
+            if (!element) return;
+            element.textContent = `${count} ${count === 1 ? 'file' : 'files'}`;
+        }
+        function renderFileList(inputId, listId, countId) {
+            const input = document.getElementById(inputId);
+            const list = document.getElementById(listId);
+            const files = fileState.get(inputId) || [];
+            list.innerHTML = '';
+            updateCount(countId, files.length);
+            if (files.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'file-list-empty';
+                empty.textContent = 'No files selected';
+                list.appendChild(empty);
+                return;
+            }
+            files.forEach((file, index) => {
+                const li = document.createElement('li');
+                const name = document.createElement('span');
+                name.className = 'file-name';
+                name.textContent = file.name;
+                name.title = file.name;
+                const size = document.createElement('span');
+                size.className = 'file-size';
+                size.textContent = `${(file.size / 1024).toFixed(1)} KB`;
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'file-remove';
+                remove.textContent = '✕';
+                remove.title = `Remove ${file.name}`;
+                remove.setAttribute('aria-label', `Remove ${file.name}`);
+                remove.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    const current = fileState.get(inputId) || [];
+                    current.splice(index, 1);
+                    fileState.set(inputId, current);
+                    setInputFiles(input, current);
+                    renderFileList(inputId, listId, countId);
+                });
+                li.appendChild(name);
+                li.appendChild(size);
+                li.appendChild(remove);
+                list.appendChild(li);
+            });
+        }
+        function addFiles(inputId, listId, countId, incomingFiles) {
+            const input = document.getElementById(inputId);
+            const current = fileState.get(inputId) || [];
+            const existing = new Set(current.map(fileKey));
+            Array.from(incomingFiles).forEach(file => {
+                const extension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+                if (!['.xls', '.xlsx'].includes(extension)) return;
+                const key = fileKey(file);
+                if (!existing.has(key)) {
+                    current.push(file);
+                    existing.add(key);
+                }
+            });
+            fileState.set(inputId, current);
+            setInputFiles(input, current);
+            renderFileList(inputId, listId, countId);
+        }
+
+        const uploadConfigs = [
+            ['roomsFile', 'roomsList', 'roomsCount'],
+            ['sessionsFiles', 'sessionsList', 'sessionsCount'],
+            ['roomsFile2', 'roomsList2', 'roomsCount2'],
+            ['studentsFile', 'studentsList', 'studentsCount'],
+            ['scheduleFile', 'scheduleList', 'scheduleCount']
+        ];
+        uploadConfigs.forEach(([inputId, listId, countId]) => {
+            const input = document.getElementById(inputId);
+            input.addEventListener('change', () => {
+                addFiles(inputId, listId, countId, input.files);
+                // Reset the native value so selecting the same file again still fires change.
+                input.value = '';
+            });
         });
-    });
-}
 
-// Setup all file inputs
-setupFileInput('roomsFile', 'roomsList');
-setupFileInput('sessionsFiles', 'sessionsList');
-setupFileInput('roomsFile2', 'roomsList2');
-setupFileInput('studentsFile', 'studentsList');
-setupFileInput('scheduleFile', 'scheduleList');
-
-// Drag and drop
-document.querySelectorAll('.dropzone').forEach(zone => {
-    zone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        zone.classList.add('active');
-    });
-    
-    zone.addEventListener('dragleave', () => {
-        zone.classList.remove('active');
-    });
-    
-    zone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        zone.classList.remove('active');
-        
-        const input = zone.querySelector('input[type="file"]');
-        if (input && e.dataTransfer.files.length > 0) {
-            input.files = e.dataTransfer.files;
-            input.dispatchEvent(new Event('change'));
-        }
-    });
-});
-
-// Form submission
-document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-     console.log("SUBMIT CLICKED");
-
-    e.preventDefault();
-    
-    const btn = document.getElementById('submitBtn');
-    const status = document.getElementById('status');
-    const mode = document.querySelector('input[name="mode"]:checked').value;
-    
-    // Show processing status
-    btn.disabled = true;
-    status.className = 'status active processing';
-    status.innerHTML = '<div class="spinner"></div> Processing files...';
-    
-    try {
-        const formData = new FormData();
-        formData.append('mode', mode);
-        
-        //
-        if (mode === 'session-files') {
-            const roomsFile = document.getElementById('roomsFile').files[0];
-            const sessionsFiles = document.getElementById('sessionsFiles').files;
-
-            if (!roomsFile || sessionsFiles.length === 0) {
-                throw new Error('Please select all required files');
-            }
-
-            formData.append('rooms', roomsFile);
-            for (let file of sessionsFiles) {
-                formData.append('sessions', file);
-            }
-
-        } else if (mode === 'centralized') {
-            const roomsFile = document.getElementById('roomsFile2').files[0];
-            const studentsFile = document.getElementById('studentsFile').files[0];
-            const scheduleFile = document.getElementById('scheduleFile').files[0];
-
-            if (!roomsFile || !studentsFile || !scheduleFile) {
-                throw new Error('Please select Rooms, Students, and Schedule files');
-            }
-
-            formData.append('rooms', roomsFile);
-            formData.append('students', studentsFile);
-            formData.append('schedule', scheduleFile);
-        }
-
-        
-        const response = await fetch('/process', {
-            method: 'POST',
-            body: formData
+        document.querySelectorAll('.dropzone').forEach(zone => {
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('active');
+            });
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('active');
+            });
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('active');
+                const input = zone.querySelector('input[type="file"]');
+                if (input && e.dataTransfer.files.length > 0) {
+                    const config = uploadConfigs.find(item => item[0] === input.id);
+                    if (config) {
+                        addFiles(config[0], config[1], config[2], e.dataTransfer.files);
+                    }
+                }
+            });
         });
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Processing failed');
-        }
-        
-        // Download the file
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'exam_allocations.zip';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        // Show success
-        status.className = 'status active success';
-        status.innerHTML = '✅ Download complete! Check your downloads folder.';
-        
-    } catch (error) {
-        status.className = 'status active error';
-        status.innerHTML = `❌ Error: ${error.message}`;
-    } finally {
-        btn.disabled = false;
-    }
-});
+        uploadConfigs.forEach(([inputId, listId, countId]) => {
+            renderFileList(inputId, listId, countId);
+        });
 
-const toggleBtn = document.getElementById('themeToggle');
 
-toggleBtn.addEventListener('click', () => {
-  document.documentElement.classList.toggle('light');
-});
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            console.log("SUBMIT CLICKED");
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const status = document.getElementById('status');
+            const mode = document.querySelector('input[name="mode"]:checked').value;
 
-</script>
+            btn.disabled = true;
+            status.className = 'status active processing';
+            status.innerHTML = '<div class="spinner"></div> Processing files...';
 
+            try {
+                const formData = new FormData();
+                formData.append('mode', mode);
+                if (mode === 'session-files') {
+                    const roomsFiles = fileState.get('roomsFile') || [];
+                    const sessionsFiles = fileState.get('sessionsFiles') || [];
+                    if (roomsFiles.length === 0 || sessionsFiles.length === 0) {
+                        throw new Error('Please select at least one room file and one session file');
+                    }
+                    roomsFiles.forEach(file => formData.append('rooms', file));
+                    sessionsFiles.forEach(file => formData.append('sessions', file));
+                } else if (mode === 'centralized') {
+                    const roomsFiles = fileState.get('roomsFile2') || [];
+                    const studentsFiles = fileState.get('studentsFile') || [];
+                    const scheduleFiles = fileState.get('scheduleFile') || [];
+                    if (roomsFiles.length === 0 || studentsFiles.length === 0 || scheduleFiles.length === 0) {
+                        throw new Error('Please select at least one Rooms, Students, and Schedule file');
+                    }
+                    roomsFiles.forEach(file => formData.append('rooms', file));
+                    studentsFiles.forEach(file => formData.append('students', file));
+                    scheduleFiles.forEach(file => formData.append('schedule', file));
+                }
+                const response = await fetch('/process', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Processing failed');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'exam_allocations.zip';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                status.className = 'status active success';
+                status.innerHTML = '✅ Download complete! Check your downloads folder.';
+            } catch (error) {
+                status.className = 'status active error';
+                status.innerHTML = `❌ Error: ${error.message}`;
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        const toggleBtn = document.getElementById('themeToggle');
+        toggleBtn.addEventListener('click', () => {
+            document.documentElement.classList.toggle('light');
+        });
+    </script>
 </body>
+
 </html>
