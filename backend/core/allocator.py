@@ -92,3 +92,5 @@ def allocate_students_to_room(group1_students, group2_students, rows, cols):
         else:
             group2_idx=current_idx
     return room_layout, room_students, course_header
+
+
