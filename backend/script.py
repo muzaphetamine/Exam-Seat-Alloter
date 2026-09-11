@@ -305,9 +305,9 @@ def group_students_by_course_subject(session_students):
 
 
 def create_room_pairs(course_subject_groups):
-    groups = list(course_subject_groups.keys())
-    room_pairs = []
-    used_groups = set()
+    groups=list(course_subject_groups.keys())
+    room_pairs=[]
+    used_groups=set()
     for i, group1 in enumerate(groups):
         if group1 in used_groups:
             continue  
