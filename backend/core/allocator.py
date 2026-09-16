@@ -2,17 +2,15 @@ import re
 from collections import defaultdict
 
 
-def extract_course_from_usn(usn):
-    match=re.search(r'\d{2}([A-Z]{2,3})\d{3}$', str(usn))
-    return match.group(1) if match else 'UNKNOWN'
-
-
 def group_students_by_course_subject(session_students):
-    session_students['ExtractedCourse']=session_students['USN'].apply(extract_course_from_usn)
+    required_columns ={"USN", "SubjectCode", "Course"}
+    missing =required_columns-set(session_students.columns)
+    if missing:
+        raise ValueError("Session data is missing required columns: "+ ", ".join(sorted(missing)))
     course_subject_groups =defaultdict(list)
     for _, student in session_students.iterrows():
-        key =(student['ExtractedCourse'], student['SubjectCode'])
-        course_subject_groups[key].append(student)  
+        key =(student["Course"],student["SubjectCode"])
+        course_subject_groups[key].append(student)
     return dict(course_subject_groups)
 
 
