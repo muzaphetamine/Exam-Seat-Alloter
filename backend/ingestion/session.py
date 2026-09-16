@@ -9,6 +9,14 @@ from .common import clean_columns, missing_columns
 SESSION_STUDENT_COLUMNS = {"USN","Name","SubjectCode"}
 
 
+def extract_course_from_usn(usn):
+    usn=str(usn).strip().upper()
+    match = re.match(r'^\d[A-Z]{2}\d{2}([A-Z]{2,4})\d{3}$', usn)
+    if not match:
+        raise ValueError(f"Could not determine course from USN: {usn}")
+    return match.group(1)
+
+
 def validate_session_file(filepath):
     date_str, time_str =extract_metadata(filepath)
     date_obj, start_dt, end_dt =normalize_datetime(date_str, time_str)
@@ -28,6 +36,10 @@ def validate_session_file(filepath):
     missing=missing_columns(df, SESSION_STUDENT_COLUMNS)
     if missing:
         raise ValueError("missing required session table columns: " + ", ".join(missing))
+
+    student_rows=df.dropna(subset=["USN"])
+    for usn in student_rows["USN"]:
+        extract_course_from_usn(usn)
     return True
 
 
@@ -68,7 +80,7 @@ def normalize_datetime(date_str, time_str):
     if not date_str or not time_str:
         return None, None, None
     try: date_obj= datetime.strptime(date_str, '%Y-%m-%d')
-    except: return None, None, None
+    except ValueError: return None, None, None
     start_time = None
     for fmt in ('%H:%M:%S', '%H:%M'):
         try:
@@ -94,7 +106,13 @@ def read_students_from_file(filepath):
         'Subject Name': 'SubjectName',
         'Semester': 'Semester'
     })
-    df= df.dropna(subset=['USN'])
+
+    df = df.dropna(subset=["USN"]).copy()
+    df["USN"] =(df["USN"].astype(str).str.strip().str.upper())
+    df["Name"] =(df["Name"].fillna("").astype(str).str.strip())
+    df["SubjectCode"] =(df["SubjectCode"].fillna("").astype(str).str.strip().str.upper())
+    df["Course"] =df["USN"].apply(extract_course_from_usn)
+
     return df
 
 
