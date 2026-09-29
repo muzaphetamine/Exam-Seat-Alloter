@@ -5,17 +5,20 @@ import shutil
 import zipfile
 from io import BytesIO
 from werkzeug.utils import secure_filename
-from script import (
-    process_session_files,
-    generate_sessions_from_centralized,
-    read_rooms_from_files,
+from backend.config import MAX_UPLOAD_SIZE_MB, DEFAULT_PORT
+from backend.ingestion.rooms import read_rooms_from_files
+from backend.ingestion.centralized import (
     read_centralized_students_from_files,
     read_centralized_schedules_from_files,
-    ingest_session_files,
+)
+from backend.ingestion.session import ingest_session_files
+from backend.pipeline import (
+    process_session_files,
+    process_centralized_data,
 )
 
-app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH']=50*1024*1024
+app = Flask(__name__, template_folder="../frontend")
+app.config['MAX_CONTENT_LENGTH'] = MAX_UPLOAD_SIZE_MB*1024*1024
 
 
 def save_uploaded_files(files, folder):
@@ -64,6 +67,7 @@ def process():
         sessions_dir =os.path.join(input_dir, 'sessions')
         for directory in (rooms_dir, students_dir, schedules_dir, sessions_dir, output_dir):
             os.makedirs(directory, exist_ok=True)
+
         if mode=='session-files':
             room_files =save_uploaded_files(request.files.getlist('rooms'), rooms_dir)
             session_files =save_uploaded_files(request.files.getlist('sessions'), sessions_dir)
@@ -71,9 +75,11 @@ def process():
                 return jsonify({'error': 'Please upload at least one room Excel file.'}), 400
             if not session_files:
                 return jsonify({'error': 'Please upload at least one session Excel file.'}), 400
+            
             rooms_df =read_rooms_from_files(room_files)
             ingest_session_files(session_files)
             results =process_session_files(session_files, rooms_df, output_dir)
+
         elif mode=='centralized':
             room_files =save_uploaded_files(request.files.getlist('rooms'), rooms_dir)
             student_files =save_uploaded_files(request.files.getlist('students'), students_dir)
@@ -84,15 +90,20 @@ def process():
                 return jsonify({'error': 'Please upload at least one student Excel file.'}), 400
             if not schedule_files:
                 return jsonify({'error': 'Please upload at least one schedule Excel file.'}), 400
+            
             rooms_df =read_rooms_from_files(room_files)
             students_df =read_centralized_students_from_files(student_files)
             schedule_df =read_centralized_schedules_from_files(schedule_files)
-            session_paths =generate_sessions_from_centralized(students_df, schedule_df, sessions_dir)
-            if not session_paths:
+            results = process_centralized_data(
+                students_df,
+                schedule_df,
+                rooms_df,
+                output_dir
+            )
+            if not results:
                 return jsonify({
-                    'error': 'No sessions could be generated from the supplied schedule and student files.'
+                    'error': 'No sessions could be processed from the supplied schedule and student files.'
                 }), 400
-            results =process_session_files(session_paths, rooms_df, output_dir)
         else:
             return jsonify({'error': 'Invalid mode'}), 400
         zip_buffer=make_zip(output_dir)
@@ -112,4 +123,4 @@ def process():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=DEFAULT_PORT)
