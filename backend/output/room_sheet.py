@@ -97,7 +97,7 @@ def create_room_sheet(wb,room_name,room_layout,course_header,room_students):
             ws.append([
                 student["USN"],
                 student["Name"],
-                student["ExtractedCourse"],
+                student["Course"],
                 student["SubjectCode"]
             ])
             row_num =(table_header_row+1+idx)

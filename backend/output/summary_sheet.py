@@ -1,6 +1,5 @@
 from collections import defaultdict
 from openpyxl.styles import Border, Side, Font, Alignment, PatternFill
-from backend.core.allocator import extract_course_from_usn
 
 THIN_BORDER = Border(
     left=Side(style="thin"),
@@ -59,7 +58,7 @@ def create_summary_sheet(
         ],
         ["", "", ""],
         ["Average Room Capacity", int(avg_capacity),""],
-        ["Rooms Used", len(rooms_df), ""],
+        ["Total Rooms", len(rooms_df), ""],
         ["Extra Rooms Needed", extra_rooms,""],
     ]
 
@@ -116,8 +115,7 @@ def create_summary_sheet(
 
     course_count=defaultdict(int)
     for student in session_students.itertuples():
-        course = extract_course_from_usn(student.USN)
-        course_count[course]+=1
+        course_count[student.Course]+=1
     for idx, (course, count) in enumerate(course_count.items()):
         percentage =(f"{count / total_students * 100:.1f}%" if total_students > 0 else "0%")
         ws_summary.append([course, count, percentage])
