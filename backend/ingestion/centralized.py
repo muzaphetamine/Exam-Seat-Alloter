@@ -18,8 +18,11 @@ def read_centralized_students_from_files(filepaths):
             df =df.dropna(how="all")
             for col in ["USN", "Name", "Course", "SubjectCode"]:
                 df[col] =df[col].fillna("").astype(str).str.strip()
-            if (df["USN"] == "").any() or (df["SubjectCode"] == "").any():
-                raise ValueError("USN and SubjectCode cannot be blank")
+            df["USN"] = df["USN"].str.upper()
+            df["Course"] = df["Course"].str.upper()
+            df["SubjectCode"] = df["SubjectCode"].str.upper()
+            if (df["USN"]=="").any() or (df["Course"]=="").any() or (df["SubjectCode"]=="").any():
+                raise ValueError("USN, Course and SubjectCode cannot be blank")
             frames.append(df)
         except Exception as exc:
             errors.append(f"{os.path.basename(filepath)}: {exc}")
