@@ -23,20 +23,25 @@ Two modes available:
 Specifically built for college format  
 Uses 2 varieties of input files  
 -Room file(s): consists of room capacity data  
-<img width="755" height="134" alt="e1" src="https://github.com/user-attachments/assets/dcc967f2-dc24-4daf-925a-33be266d01c8" />  
+<img width="755" height="134" alt="e1" src="https://github.com/user-attachments/assets/dcc967f2-dc24-4daf-925a-33be266d01c8" />
+  
 -Session file(s): each file consists student data for one exam session only  
 <img width="335" height="143" alt="e2" src="https://github.com/user-attachments/assets/e2c7c756-7e9e-4abf-ab70-8d8685160cb0" />  
+  
 
-2) CENTRALIZED MODE  
+3) CENTRALIZED MODE  
 Built for general use case  
 Uses 3 varieties of input files  
 -Room file(s): consists of room capacity data  
-<img width="755" height="134" alt="e1" src="https://github.com/user-attachments/assets/dcc967f2-dc24-4daf-925a-33be266d01c8" />  
+<img width="755" height="134" alt="e1" src="https://github.com/user-attachments/assets/dcc967f2-dc24-4daf-925a-33be266d01c8" />
+  
 -Student file(s): consists general data of students  
 <img width="535" height="184" alt="e3" src="https://github.com/user-attachments/assets/0a12a566-dc5c-479a-8867-c91911807cc8" />  
+  
 -Schedule file(s): consists exam schedule data  
 <img width="554" height="161" alt="e4" src="https://github.com/user-attachments/assets/608cafee-9979-426a-8244-055e72cedb64" />  
-
+  
+  
 
 ALLOCATION LOGIC:  
 Students are grouped using (Course, SubjectCode)  
